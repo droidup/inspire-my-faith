@@ -1,0 +1,48 @@
+--- server.ts
++++ server.ts
+@@ -232,2 +232,45 @@
+   });
+ 
++  app.post('/api/translate-verses', async (req, res) => {
++    try {
++      const { verses, version } = req.body;
++      if (!verses || !version) {
++        return res.status(400).json({ success: false, message: 'Missing verses or version' });
++      }
++
++      if (version === 'KJV') {
++        return res.json({ success: true, data: verses });
++      }
++
++      const apiKey = process.env.GEMINI_API_KEY;
++      if (!apiKey) {
++         return res.status(500).json({ success: false, message: 'Translation API key missing' });
++      }
++
++      const { GoogleGenAI } = await import('@google/genai');
++      const ai = new GoogleGenAI({ apiKey });
++
++      const prompt = `Provide the exact text for the following Bible verses in the ${version} translation.
++Verses:
++${verses.map((v) => `${v.book_name} ${v.chapter}:${v.verse}`).join('\n')}
++
++Return ONLY a JSON array of strings containing just the verse text, in the exact same order. Do not include markdown blocks.`;
++
++      const response = await ai.models.generateContent({
++        model: 'gemini-3.1-flash-lite',
++        contents: prompt,
++        config: {
++          responseMimeType: "application/json",
++        }
++      });
++
++      const translatedTexts = JSON.parse(response.text || '[]');
++      const translatedVerses = verses.map((v, i) => ({ ...v, text: translatedTexts[i] || v.text }));
++      res.json({ success: true, data: translatedVerses });
++    } catch (error) {
++      console.error("Translation error:", error);
++      res.status(500).json({ success: false, message: 'Translation failed' });
++    }
++  });
++
+   app.get('/api/admin/stats', async (req, res) => {
