@@ -26,7 +26,7 @@ try {
     // 1. Generate Prayer
     try {
         $prompt = "Write a short, comforting personal prayer (2-3 sentences) for someone who is feeling/experiencing: \"{$text}\". Keep it compassionate, uplifting, and rooted in Christian faith. Do not use markdown, just text.";
-        $prayer = callGeminiAPI($prompt, 'gemini-1.5-flash');
+        $prayer = callGeminiAPI($prompt, 'gemini-3.6-flash');
     } catch(Exception $e) {
         $prayer = "ERROR: " . $e->getMessage();
     }
@@ -65,7 +65,7 @@ Return ONLY valid JSON matching this schema:
   ]
 }";
         
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}";
         $postData = [
             "contents" => [
                 [

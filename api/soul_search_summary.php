@@ -33,7 +33,7 @@ Write a very brief, comforting summary (1-2 sentences) of what they were searchi
 Conversation history:
 {$historyText}";
 
-    $processedText = callGeminiAPI($prompt, 'gemini-1.5-flash');
+    $processedText = callGeminiAPI($prompt, 'gemini-3.6-flash');
     
     echo json_encode(["success" => true, "data" => trim($processedText)]);
 } catch(Exception $e) {

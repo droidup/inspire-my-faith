@@ -31,7 +31,7 @@ Each object must have these exactly keys: \"reference\", \"verse_text\", \"make_
         throw new Exception("Gemini API Key is not configured in config.php");
     }
 
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={$apiKey}";
     $postData = [
         "contents" => [
             [

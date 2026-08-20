@@ -34,7 +34,7 @@ Here is the text to process:
 {$text}";
     
     // Call Gemini API
-    $processedText = callGeminiAPI($prompt, 'gemini-2.5-flash');
+    $processedText = callGeminiAPI($prompt, 'gemini-3.6-flash');
     
     echo json_encode(["success" => true, "data" => trim($processedText)]);
 } catch(Exception $e) {

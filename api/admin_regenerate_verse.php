@@ -72,7 +72,7 @@ Please translate the Target Verse ({$targetVerse['verse']}) into the Inspire My 
 Provide ONLY the translated text for the Target Verse. Do not include verse numbers or any conversational text.";
     
     // Call Gemini API
-    $translatedText = callGeminiAPI($prompt, 'gemini-2.5-flash');
+    $translatedText = callGeminiAPI($prompt, 'gemini-3.6-flash');
     
     echo json_encode(["success" => true, "text" => trim($translatedText)]);
 } catch(Exception $e) {
