@@ -5,7 +5,7 @@
 define('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY_HERE');
 
 // Helper function to call the Gemini REST API
-function callGeminiAPI($prompt, $model = 'gemini-2.5-flash') {
+function callGeminiAPI($prompt, $model = 'gemini-3.6-flash') {
     $apiKey = GEMINI_API_KEY;
     if ($apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
         throw new Exception("Gemini API Key is not configured in config.php");

@@ -38,7 +38,7 @@ Write a gentle, encouraging letter to them. Address them as \"Dear Friend,\" and
 Analyze their spiritual journey based on these activities (prayers, notes, saved verses). Acknowledge their focuses, notice any growth or patterns in faith, and offer biblical comfort.
 Do NOT use heavy markdown formatting. You may use **bold** or *italics* sparingly, but do not use large headers or lists. Write it as a heartfelt letter.";
     
-    $processedText = callGeminiAPI($prompt, 'gemini-1.5-flash');
+    $processedText = callGeminiAPI($prompt, 'gemini-3.6-flash');
     
     echo json_encode(["success" => true, "data" => trim($processedText)]);
 } catch(Exception $e) {
