@@ -12,7 +12,8 @@ interface StudyGuideModalProps {
   onUpdateNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   availableCollections?: string[];
-  onUpdateCollections?: (collections: string[]) => void;
+  onUpdateCollections?: (collections: string[], sourceSection?: string) => void;
+  sourceSection?: string;
 }
 
 export default function StudyGuideModal({
@@ -22,7 +23,8 @@ export default function StudyGuideModal({
   onUpdateNote,
   onDelete,
   availableCollections = [],
-  onUpdateCollections
+  onUpdateCollections,
+  sourceSection
 }: StudyGuideModalProps) {
   const [noteContent, setNoteContent] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -98,7 +100,7 @@ export default function StudyGuideModal({
                 <FolderDropdown 
                   availableFolders={availableCollections}
                   selectedFolders={verse.collections || []}
-                  onChange={onUpdateCollections}
+                  onChange={(cols) => onUpdateCollections(cols, sourceSection)}
                   label="Collections"
                 />
               </div>

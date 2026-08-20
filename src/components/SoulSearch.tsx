@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Compass, BookHeart, Check, Heart, Languages, Loader2, Bookmark, CheckCircle2, Circle, Copy, FolderOpen, Sparkles, X, ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Trash2, AlertTriangle, Pin, PinOff, LayoutGrid, List, Settings, Crosshair, Map, Sun, Flag, Star, Moon, Cloud, Flame, Leaf, Wind, Zap, BookOpen, Shield, Anchor, Key, Bell, Crown, Gem, Home, Search, Info, Minus, Church, Cross, Bird, HeartHandshake, Hand, HandHeart, Droplet, Snowflake, Mountain, Trees, Waves, Sword, Clock, Camera, Coffee, Gift, Umbrella, Users, User, Smile, Frown, Meh, Eye, HeartCrack, Activity, PenTool, MessageSquareText } from 'lucide-react';
-import AdBanner from './AdBanner';
 import { usePrayers, Prayer } from '../hooks/usePrayers';
 import { useCollectionSettings } from '../hooks/useCollectionSettings';
 
@@ -209,7 +208,7 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
     }
     
     setTranslating(true);
-    fetch('/api/translate-verses', {
+    fetch('/api/translate_verses.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verses: originalResults, version: globalVersion })
@@ -233,7 +232,8 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
     setMessage(null);
     
     try {
-      const res = await fetch('/api/soul-search', {
+      // 1. Generate the verses and prayer from the Node/Render server
+      const res = await fetch('/api/soul_search.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: input })
@@ -241,28 +241,43 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
       const data = await res.json();
       
       if (data.success) {
-        setOriginalResults(data.data);
+        // 2. Save it to local history (Fire and forget)
+        if (user) {
+          fetch('/api/save_soul_search.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              user_id: user.uid,
+              text: input,
+              emotion: 'General',
+              prayer: data.prayer,
+              verses: data.data || []
+            })
+          }).catch(console.error);
+        }
+
+        setOriginalResults(data.data || []);
         
         if (globalVersion !== 'KJV') {
           setTranslating(true);
           try {
-            const tRes = await fetch('/api/translate-verses', {
+            const tRes = await fetch('/api/translate_verses.php', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ verses: data.data, version: globalVersion })
+              body: JSON.stringify({ verses: data.data || [], version: globalVersion })
             });
             const tData = await tRes.json();
             if (tData.success) {
-              setResults(tData.data);
+              setResults(tData.data || []);
             } else {
-              setResults(data.data);
+              setResults(data.data || []);
             }
           } catch (e) {
-            setResults(data.data);
+            setResults(data.data || []);
           }
           setTranslating(false);
         } else {
-          setResults(data.data);
+          setResults(data.data || []);
         }
 
         if (data.prayer) {
@@ -342,7 +357,7 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
     setSummaryText('');
 
     try {
-      const res = await fetch('/api/soul-search/summary', {
+      const res = await fetch('/api/soul_search_summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prayers: finalItems, seasonName })
@@ -679,7 +694,7 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
         
         {/* Tabs */}
         <div className="flex justify-center mb-8">
-          <div className="bg-stone-100 p-1 rounded-2xl flex flex-wrap justify-center gap-1 shadow-inner">
+          <div className="flex bg-stone-100 p-1 rounded-2xl w-fit shrink-0 shadow-inner">
             <button
               onClick={() => { setActiveTab('search'); setSelectedSeason(null); }}
               className={`px-4 sm:px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs transition-all duration-300 flex items-center gap-2 ${
@@ -810,11 +825,6 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
                   </div>
                 </div>
               )}
-
-              {/* Ad placement */}
-              <div className="pt-12 mt-auto">
-                <AdBanner dataAdSlot="soul_search_bottom" />
-              </div>
             </div>
           </>
         )}
@@ -967,3 +977,4 @@ export default function SoulSearch({ globalVersion, targetPrayerId, clearTargetP
     </div>
   );
 }
+

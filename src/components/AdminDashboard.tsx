@@ -19,7 +19,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ userEmail, isSuperAdmin }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'editor' | 'builder' | 'generator' | 'users'>('builder');
+  const [activeTab, setActiveTab] = useState<'editor' | 'builder' | 'generator' | 'users' | 'settings'>('builder');
   
   return (
     <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 md:p-12 space-y-8 animate-in fade-in duration-700">
@@ -57,14 +57,24 @@ export default function AdminDashboard({ userEmail, isSuperAdmin }: AdminDashboa
           Verse Generator
         </button>
         {isSuperAdmin && (
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex-shrink-0 px-6 py-4 font-bold tracking-widest uppercase text-xs transition-colors border-b-2 ${
-              activeTab === 'users' ? 'border-[#c2094c] text-[#c2094c]' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            User Management
-          </button>
+          <>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex-shrink-0 px-6 py-4 font-bold tracking-widest uppercase text-xs transition-colors border-b-2 ${
+                activeTab === 'users' ? 'border-[#c2094c] text-[#c2094c]' : 'border-transparent text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              User Management
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-shrink-0 px-6 py-4 font-bold tracking-widest uppercase text-xs transition-colors border-b-2 ${
+                activeTab === 'settings' ? 'border-[#c2094c] text-[#c2094c]' : 'border-transparent text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              Settings
+            </button>
+          </>
         )}
       </div>
 
@@ -74,6 +84,7 @@ export default function AdminDashboard({ userEmail, isSuperAdmin }: AdminDashboa
         {activeTab === 'builder' && <BibleBuilder />}
         {activeTab === 'generator' && <AIVerseGenerator />}
         {activeTab === 'users' && isSuperAdmin && <UserManagement userEmail={userEmail} />}
+        {activeTab === 'settings' && isSuperAdmin && <SiteSettings userEmail={userEmail} />}
       </div>
     </div>
   );
@@ -129,7 +140,7 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
     if (!newText) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/bible/auto-tag', {
+      const res = await fetch('/api/admin_auto_tag.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: newText })
@@ -149,7 +160,7 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
   };
 
   useEffect(() => {
-    fetch('/api/bible/books')
+    fetch('/api/get_books.php')
       .then(res => res.json())
       .then(data => {
         if (data.success) setBooks(data.data);
@@ -192,7 +203,7 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/admin/regenerate-verse', {
+      const res = await fetch('/api/admin_regenerate_verse.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookId: selectedBook, chapter, verseNum })
@@ -211,6 +222,33 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
     }
   };
 
+  const redoChapter = async () => {
+    if (!selectedBook || !chapter) return;
+    if (!window.confirm(`Are you sure you want to REDO Chapter ${chapter} of Book ID ${selectedBook}? This will instantly delete all existing IMF translations for this chapter and regenerate them!`)) {
+      return;
+    }
+    setLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch('/api/admin_build_chapter.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: selectedBook, chapter })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatus({ type: 'success', message: 'Chapter rebuilt successfully!' });
+      } else {
+        setStatus({ type: 'error', message: data.message || 'Error rebuilding chapter.' });
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus({ type: 'error', message: 'Error rebuilding chapter.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCancel = () => {
     setNewText('');
     setCurrentText('');
@@ -222,7 +260,7 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/admin/verse-translation', {
+      const res = await fetch('/api/admin_verse_translation.php', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -347,14 +385,24 @@ function VerseEditor({ userEmail }: { userEmail: string }) {
             />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <button 
-              onClick={handleRegenerateVerse}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-stone-200 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Regenerate with AI
-            </button>
+            <div className="flex gap-4">
+              <button 
+                onClick={redoChapter}
+                disabled={loading || !selectedBook || !chapter}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-100 text-red-700 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-red-200 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={16} />
+                Redo Entire Chapter
+              </button>
+              <button 
+                onClick={handleRegenerateVerse}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-stone-200 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                Regenerate Verse
+              </button>
+            </div>
             <div className="flex gap-4">
               <button 
                 onClick={handleCancel}
@@ -385,70 +433,24 @@ function BibleBuilder() {
   const [recentTopics, setRecentTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [buildStatus, setBuildStatus] = useState<any>({ 
-    active: false, 
-    bookId: 0,
-    bookName: '',
-    chapters: [],
-    globalStatus: 'idle',
-    resumeAt: null
-  });
-  const [books, setBooks] = useState<any[]>([]);
-  const [builderTab, setBuilderTab] = useState<'OT' | 'NT'>('NT');
 
-  useEffect(() => {
-    const fetchStatus = () => {
-      fetch('/api/admin/batch-status')
-        .then(res => res.json())
-        .then(data => setBuildStatus(data))
-        .catch(() => {});
-    };
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const startBookBuild = async (bookId: number) => {
-    try {
-      const res = await fetch('/api/admin/build-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBuildStatus(prev => ({ ...prev, active: true, bookId }));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const stopBuild = async () => {
-    try {
-      await fetch('/api/admin/stop-build', { method: 'POST' });
-      setBuildStatus(prev => ({ ...prev, active: false, globalStatus: 'idle', resumeAt: null }));
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const statsRes = await fetch('/api/admin/stats');
+      const statsRes = await fetch('/api/admin_stats.php');
       const statsData = await statsRes.json();
       if (statsData.success) {
         setStats(statsData.data);
       }
       
-      const topicsRes = await fetch('/api/admin/recent-topics');
+      const topicsRes = await fetch('/api/admin_recent_topics.php');
       const topicsData = await topicsRes.json();
       if (topicsData.success) {
         setRecentTopics(topicsData.data);
       }
       
-      const booksRes = await fetch('/api/bible/books');
+      const booksRes = await fetch('/api/get_books.php');
       const booksData = await booksRes.json();
       if (booksData.success) {
         setBooks(booksData.data);
@@ -492,116 +494,7 @@ function BibleBuilder() {
         </div>
       )}
 
-      {/* Builder Progress View */}
-      <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-[#c2094c]">
-              <Activity className="w-5 h-5" strokeWidth={1.5} />
-            </div>
-            <h3 className="font-serif text-xl text-slate-900">Builder Progress</h3>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setBuilderTab('OT')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors ${builderTab === 'OT' ? 'bg-[#c2094c] text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
-            >
-              Old Testament
-            </button>
-            <button
-              onClick={() => setBuilderTab('NT')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors ${builderTab === 'NT' ? 'bg-[#c2094c] text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}
-            >
-              New Testament
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-stone-50/50">
-                <th className="py-4 px-6 text-xs font-bold text-stone-400 uppercase tracking-widest border-b border-stone-100 w-1/4">Book</th>
-                <th className="py-4 px-6 text-xs font-bold text-stone-400 uppercase tracking-widest border-b border-stone-100 w-1/2">Status</th>
-                <th className="py-4 px-6 text-xs font-bold text-stone-400 uppercase tracking-widest border-b border-stone-100 w-1/4">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {books.filter(b => b.testament === builderTab).map((book) => {
-                const isBuilding = buildStatus.active && buildStatus.bookId === book.id;
-                const isCompleted = book.completed; // Hide completed books unless they are currently building (edge case)
 
-                return (
-                  <React.Fragment key={book.id}>
-                    <tr className={`border-b border-stone-50 hover:bg-stone-50/50 transition-colors ${isBuilding ? 'bg-orange-50/30' : ''}`}>
-                      <td className="py-4 px-6 font-medium text-slate-800">{book.name}</td>
-                      <td className="py-4 px-6">
-                        {isBuilding ? (
-                          <div className="flex flex-col gap-1">
-                            {buildStatus.globalStatus === 'waiting_quota' ? (
-                                <span className="text-xs font-bold text-red-600 animate-pulse">Daily Quota Reached. Resuming later.</span>
-                            ) : (
-                                <span className="text-xs font-bold text-orange-600 animate-pulse">Building in progress...</span>
-                            )}
-                            {buildStatus.resumeAt && (
-                                <span className="text-[10px] text-stone-500 font-medium">Resume At: {new Date(buildStatus.resumeAt).toLocaleString()}</span>
-                            )}
-                          </div>
-                        ) : (
-                          isCompleted ? <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Completed</span> : <span className="text-xs text-stone-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6">
-                        {isBuilding ? (
-                          <button 
-                            onClick={stopBuild}
-                            className="px-4 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors"
-                          >
-                            Stop Build
-                          </button>
-                        ) : (
-                          isCompleted ? <span className="px-3 py-1 bg-stone-100 text-stone-500 rounded-full text-[10px] font-bold uppercase tracking-wider">Done</span> : <button 
-                            onClick={() => startBookBuild(book.id)}
-                            disabled={buildStatus.active}
-                            className="px-4 py-1.5 bg-stone-100 text-stone-500 hover:bg-[#c2094c] hover:text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:hover:bg-stone-100 disabled:hover:text-stone-500"
-                          >
-                            Build Book
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                    
-                    {/* Expand Chapter Rows if Building */}
-                    {isBuilding && buildStatus.chapters && buildStatus.chapters.map((chap: any) => {
-                       if (chap.status === 'completed') return null; // Hide completed chapters
-                       return (
-                          <tr key={`${book.id}-${chap.chapter}`} className="bg-stone-50/20 border-b border-stone-100">
-                             <td className="py-2 px-10 text-xs font-medium text-stone-600">Chapter {chap.chapter}</td>
-                             <td className="py-2 px-6">
-                               <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                  chap.status === 'building' ? 'text-orange-600' :
-                                  chap.status === 'error' ? 'text-red-500' :
-                                  chap.status === 'checking' ? 'text-blue-500' :
-                                  'text-stone-400'
-                               }`}>
-                                 {chap.message}
-                               </span>
-                             </td>
-                             <td className="py-2 px-6"></td>
-                          </tr>
-                       );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-              {books.filter(b => b.testament === builderTab && (!b.completed || (buildStatus.active && buildStatus.bookId === b.id))).length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-stone-400 text-sm">All books in this testament are completed!</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200 flex items-start gap-4 hover:shadow-lg transition-all duration-300">
@@ -626,18 +519,7 @@ function BibleBuilder() {
             </p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-200 flex items-start gap-4 sm:col-span-2 lg:col-span-1 hover:shadow-lg transition-all duration-300">
-          <div className="w-12 h-12 bg-stone-50 text-stone-400 rounded-2xl flex items-center justify-center shrink-0">
-            <Activity className="w-5 h-5" strokeWidth={1.5} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Engine Status</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`w-2 h-2 rounded-full animate-pulse shadow-sm ${buildStatus.active ? 'bg-orange-500 shadow-orange-500/50' : 'bg-emerald-500 shadow-emerald-500/50'}`}></span>
-              <p className="font-serif text-lg text-slate-900">{buildStatus.active ? 'Building' : 'Active'}</p>
-            </div>
-          </div>
-        </div>
+
       </div>
 
       {/* Recent Topics Table */}
@@ -700,7 +582,7 @@ function UserManagement({ userEmail }: { userEmail: string }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await fetch('/api/admin_users.php');
       const data = await res.json();
       if (data.success) {
         setUsers(data.data);
@@ -720,7 +602,7 @@ function UserManagement({ userEmail }: { userEmail: string }) {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch('/api/admin_users.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail.toLowerCase().trim(), reqEmail: userEmail })
@@ -744,7 +626,7 @@ function UserManagement({ userEmail }: { userEmail: string }) {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch(`/api/admin/users/${encodeURIComponent(emailToDelete)}?reqEmail=${encodeURIComponent(userEmail)}`, {
+      const res = await fetch(`/api/admin_users.php?email=${encodeURIComponent(emailToDelete)}&reqEmail=${encodeURIComponent(userEmail)}`, {
         method: 'DELETE'
       });
       const data = await res.json();
@@ -889,7 +771,7 @@ function AIVerseGenerator() {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch('/api/admin/generate-verses', {
+      const res = await fetch('/api/admin_generate_verses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1025,6 +907,88 @@ function AIVerseGenerator() {
             <><PenTool size={20} /> Generate & Save to Database</>
           )}
         </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+function SiteSettings({ userEmail }: { userEmail: string }) {
+  const [adsEnabled, setAdsEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin_settings.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.ads_enabled === 'true') {
+          setAdsEnabled(true);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleToggle = async () => {
+    setSaving(true);
+    setStatus(null);
+    const newValue = !adsEnabled;
+    try {
+      const res = await fetch('/api/admin_settings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail, key: 'ads_enabled', value: newValue ? 'true' : 'false' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdsEnabled(newValue);
+        setStatus({ type: 'success', message: 'Settings saved successfully!' });
+      } else {
+        setStatus({ type: 'error', message: data.message || 'Failed to save settings' });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: 'Network error occurred' });
+    }
+    setSaving(false);
+  };
+
+  if (loading) return <div className="p-10 text-center text-stone-500">Loading settings...</div>;
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-3xl p-6 sm:p-10 shadow-sm max-w-2xl">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 bg-stone-50 rounded-xl flex items-center justify-center text-stone-600 border border-stone-100 shrink-0">
+          <Settings size={24} />
+        </div>
+        <div>
+          <h3 className="text-2xl font-serif text-slate-800">Site Settings</h3>
+          <p className="text-stone-500 mt-1">Manage global configurations.</p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between p-6 border border-stone-200 rounded-2xl">
+          <div>
+            <h4 className="font-bold text-slate-800">Google AdSense</h4>
+            <p className="text-sm text-stone-500 mt-1">Enable or disable ads across the entire site.</p>
+          </div>
+          <button
+            onClick={handleToggle}
+            disabled={saving}
+            className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c2094c] focus-visible:ring-offset-2 ${adsEnabled ? 'bg-[#c2094c]' : 'bg-stone-300'}`}
+          >
+            <span className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${adsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        {status && (
+          <div className={`p-4 rounded-xl text-sm ${status.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+            {status.message}
+          </div>
+        )}
       </div>
     </div>
   );

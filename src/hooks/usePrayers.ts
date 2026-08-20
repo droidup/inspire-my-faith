@@ -39,10 +39,13 @@ export function usePrayers() {
     let isMounted = true;
     const fetchPrayers = async () => {
       try {
-        const res = await fetch(`/api/user/prayers/${user.uid}`);
+        const res = await fetch(`/api/get_prayers.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
-          setPrayers(data.data);
+          setPrayers(data.data.map((p: any) => ({
+            ...p,
+            collections: p.collections || []
+          })));
         }
       } catch (e) {
         console.error("Failed to fetch prayers", e);
@@ -53,7 +56,7 @@ export function usePrayers() {
     return () => { isMounted = false; };
   }, [user, loading]);
 
-  const savePrayer = async (prayer: Prayer) => {
+  const savePrayer = async (prayer: Prayer, sourceSection: string = 'soul_search') => {
     if (!user) {
       // Save to local storage
       setPrayers(prev => {
@@ -72,20 +75,20 @@ export function usePrayers() {
     }
 
     try {
-      await fetch('/api/user/prayers', {
+      await fetch('/api/save_prayer.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, prayer })
+        body: JSON.stringify({ userId: user.uid, prayer, sourceSection })
       });
-      setPrayers(prev => {
-        const existing = prev.findIndex(p => p.id === prayer.id);
-        if (existing >= 0) {
-          const newPrayers = [...prev];
-          newPrayers[existing] = prayer;
-          return newPrayers;
-        }
-        return [prayer, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-      });
+      
+      const res = await fetch(`/api/get_prayers.php?userId=${user.uid}`);
+      const data = await res.json();
+      if (data.success) {
+        setPrayers(data.data.map((p: any) => ({
+          ...p,
+          collections: p.collections || []
+        })));
+      }
     } catch (e) {
       console.error("Failed to save prayer", e);
     }
@@ -103,7 +106,7 @@ export function usePrayers() {
     }
 
     try {
-      await fetch(`/api/user/prayers/${prayerId}?userId=${user.uid}`, {
+      await fetch(`/api/delete_prayer.php?prayerId=${prayerId}&userId=${user.uid}`, {
         method: 'DELETE'
       });
       setPrayers(prev => prev.filter(p => p.id !== prayerId));
@@ -115,30 +118,6 @@ export function usePrayers() {
   const toggleAnswered = async (prayer: Prayer) => {
     const updated = { ...prayer, answered: !prayer.answered };
     await savePrayer(updated);
-    
-    if (!user) return; // Don't log faith event if not logged in
-
-    // If it was marked as answered, log it to the Faith Timeline
-    if (updated.answered) {
-      try {
-        await fetch('/api/user/faith-events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            userId: user.uid, 
-            event: {
-              id: `event-prayer-${prayer.id}`,
-              eventType: 'prayer_answered',
-              title: 'Answered Prayer',
-              description: prayer.title,
-              timestamp: Date.now()
-            }
-          })
-        });
-      } catch (e) {
-        console.error("Failed to log faith event", e);
-      }
-    }
   };
 
   const togglePrayerPin = (prayer: Prayer) => {

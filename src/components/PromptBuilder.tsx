@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MessageSquareText, CalendarIcon, FolderOpen, BookOpen, User, Lightbulb, Send, Compass, Heart, CheckCircle2, Check, Copy, X, PenTool } from 'lucide-react';
-import AdBanner from './AdBanner';
 import FaithAreaLayout from './shared/FaithAreaLayout';
 import { useSavedPrompts, Prompt } from '../hooks/useSavedPrompts';
 import { TimelineEvent } from '../hooks/useFaithTimeline';
@@ -98,7 +97,7 @@ export default function PromptBuilder({ globalVersion = 'IMF' }: { globalVersion
         
         {/* Exact Match Pill Navigation (Image 1 Style) */}
         <div className="flex justify-center mb-8">
-          <div className="bg-stone-100 p-1 rounded-2xl flex flex-wrap justify-center gap-1 shadow-inner">
+          <div className="flex bg-stone-100 p-1 rounded-2xl w-fit shrink-0 shadow-inner">
             <button
               onClick={() => setActiveTab('builder')}
               className={`px-4 sm:px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs transition-all duration-300 flex items-center gap-2 ${
@@ -238,9 +237,6 @@ export default function PromptBuilder({ globalVersion = 'IMF' }: { globalVersion
                            {generating ? 'Saving...' : saved ? 'Saved!' : 'Save Prompt'} <Check size={16} />
                          </button>
                       </div>
-                    </div>
-                    <div className="mt-6">
-                      <AdBanner dataAdSlot="prompt_builder_reflection" />
                     </div>
                   </>
                 ) : (
@@ -404,3 +400,4 @@ export default function PromptBuilder({ globalVersion = 'IMF' }: { globalVersion
     </div>
   );
 }
+

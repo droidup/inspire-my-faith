@@ -22,7 +22,7 @@ export function useFaithEvents() {
     let isMounted = true;
     const fetchEvents = async () => {
       try {
-        const res = await fetch(`/api/user/faith-events/${user.uid}`);
+        const res = await fetch(`/api/user_faith_events.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setEvents(data.data);
@@ -39,7 +39,7 @@ export function useFaithEvents() {
   const saveEvent = async (event: FaithEvent) => {
     if (!user) return;
     try {
-      await fetch('/api/user/faith-events', {
+      await fetch('/api/user_faith_events.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, event })
@@ -61,7 +61,7 @@ export function useFaithEvents() {
   const removeEvent = async (eventId: string) => {
     if (!user) return;
     try {
-      await fetch(`/api/user/faith-events/${eventId}?userId=${user.uid}`, {
+      await fetch(`/api/user_faith_events.php?eventId=${eventId}&userId=${user.uid}`, {
         method: 'DELETE'
       });
       setEvents(prev => prev.filter(e => e.id !== eventId));

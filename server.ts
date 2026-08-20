@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import mysql from 'mysql2/promise';
 import path from 'path';
 import fs from 'fs';
@@ -8,13 +9,20 @@ import { GoogleGenAI } from '@google/genai';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
-  app.use(express.json());
+  app.use(cors());
+  app.use((req, res, next) => {
+    if (req.path.endsWith('.php')) {
+      next();
+    } else {
+      express.json()(req, res, next);
+    }
+  });
 
   // 1. Setup MySQL Connection Pool (Using PHP Bridge)
   const API_KEY = 'IMF_SECRET_KEY_902643667_2026';
-  const API_URL = 'https://my.inspiremyfaith.com/api/api.php';
+  const API_URL = 'https://inspiremyfaith.com/api/api.php';
 
   const pool = {
     query: async (sql: string, params: any[] = []) => {
@@ -174,9 +182,12 @@ async function startServer() {
       }));
 
       res.json({ success: true, data });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      require('fs').appendFileSync('db-errors.log', JSON.stringify(error, Object.getOwnPropertyNames(error)) + '\n'); res.status(500).json({ success: false, message: 'Database error', error: error.message });
+      try {
+        fs.appendFileSync('db-errors.log', JSON.stringify(error, Object.getOwnPropertyNames(error)) + '\\n');
+      } catch (e) {}
+      res.status(500).json({ success: false, message: 'Database error', error: error.message });
     }
   });
 
@@ -766,12 +777,20 @@ For each verse, provide the reference, the verse text, and a highly engaging "Ma
   });
 
   app.post('/api/admin/build-book', async (req, res) => {
-    const { bookId } = req.body;
+    const { bookId, force } = req.body;
     if (activeBuild.active) {
       return res.status(400).json({ success: false, message: 'A book build is already in progress.' });
     }
     
     try {
+      if (force) {
+        // Wipe existing translations for this book so they get rebuilt
+        await pool.query(
+          'DELETE FROM verse_translations WHERE version = ? AND verse_id IN (SELECT id FROM verses WHERE book_id = ?)',
+          ['IMF', bookId]
+        );
+      }
+
       const [books] = await pool.query('SELECT name FROM books WHERE id = ?', [bookId]);
       if ((books as any[]).length === 0) {
         return res.status(404).json({ success: false, message: 'Book not found' });
@@ -795,6 +814,46 @@ For each verse, provide the reference, the verse text, and a highly engaging "Ma
       simulateBookBuild(Number(bookId));
       
       res.json({ success: true, message: 'Book build started.' });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: 'Database error starting build.' });
+    }
+  });
+
+  app.post('/api/admin/build-chapter', async (req, res) => {
+    const { bookId, chapter } = req.body;
+    if (activeBuild.active) {
+      return res.status(400).json({ success: false, message: 'A book build is already in progress.' });
+    }
+    
+    try {
+      // Wipe existing translations for this chapter so they get rebuilt
+      await pool.query(
+        'DELETE FROM verse_translations WHERE version = ? AND verse_id IN (SELECT id FROM verses WHERE book_id = ? AND chapter = ?)',
+        ['IMF', bookId, chapter]
+      );
+
+      const [books] = await pool.query('SELECT name FROM books WHERE id = ?', [bookId]);
+      if ((books as any[]).length === 0) {
+        return res.status(404).json({ success: false, message: 'Book not found' });
+      }
+      
+      const bookName = (books as any[])[0].name;
+      
+      activeBuild = {
+        active: true,
+        bookId: Number(bookId),
+        bookName,
+        chapters: [{ chapter: Number(chapter), status: 'pending', message: 'Pending' }],
+        globalStatus: 'building',
+        resumeAt: null,
+        resumeTimer: null
+      };
+      
+      // Start background process
+      simulateBookBuild(Number(bookId));
+      
+      res.json({ success: true, message: 'Chapter build started.' });
     } catch (e) {
       console.error(e);
       res.status(500).json({ success: false, message: 'Database error starting build.' });
@@ -1387,7 +1446,6 @@ Provide ONLY the translated text for the Target Verse. Do not include verse numb
     } catch (error: any) {
       console.error(error);
       try {
-        const fs = await import('fs');
         fs.appendFileSync('db-errors.log', JSON.stringify(error, Object.getOwnPropertyNames(error)) + '\\n');
       } catch (e) {}
       res.status(500).json({ success: false, message: 'Database error', error: error.message });

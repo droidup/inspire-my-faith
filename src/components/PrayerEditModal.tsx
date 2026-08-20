@@ -8,9 +8,10 @@ interface PrayerEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   prayer: Prayer | null;
-  onUpdate: (prayer: Prayer) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (prayer: Prayer, sourceSection?: string) => void;
+  onDelete?: (id: string) => void;
   availableCollections?: string[];
+  sourceSection?: string;
 }
 
 export default function PrayerEditModal({
@@ -20,6 +21,7 @@ export default function PrayerEditModal({
   onUpdate,
   onDelete,
   availableCollections = [],
+  sourceSection,
 }: PrayerEditModalProps) {
   const [editingPrayer, setEditingPrayer] = useState<Prayer | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<'prayer' | 'thoughts'>('prayer');
@@ -27,14 +29,18 @@ export default function PrayerEditModal({
 
   useEffect(() => {
     if (prayer) {
-      setEditingPrayer({ ...prayer });
+      const filteredCollections = sourceSection 
+        ? (prayer.collections || []).filter(c => availableCollections.includes(c))
+        : prayer.collections || [];
+
+      setEditingPrayer({ ...prayer, collections: filteredCollections });
     }
-  }, [prayer]);
+  }, [prayer, sourceSection, availableCollections]);
 
   if (!isOpen || !editingPrayer) return null;
 
   const handleSaveAndClose = () => {
-    onUpdate(editingPrayer);
+    onUpdate(editingPrayer, sourceSection);
     onClose();
   };
 
@@ -43,7 +49,7 @@ export default function PrayerEditModal({
   };
 
   const confirmDelete = () => {
-    onDelete(editingPrayer.id);
+    onDelete?.(editingPrayer.id);
     setIsDeleting(false);
     onClose();
   };

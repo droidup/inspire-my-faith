@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Book, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, X, Volume2, VolumeX, Bookmark, BookPlus, Home, Languages, Loader2, Info, Lightbulb, BookOpen, Scroll, ArrowUp, Pin, AlignJustify } from 'lucide-react';
 import SaveVerseModal from './SaveVerseModal';
 import StudyGuideModal from './StudyGuideModal';
-import AdBanner from './AdBanner';
 import { useSavedVerses, SavedVerse } from '../hooks/useSavedVerses';
 
 type BibleBook = {
@@ -122,7 +121,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
   useEffect(() => {
     if (initialBookmark) {
       // Find book
-      fetch('/api/bible/books')
+      fetch('/api/get_books.php')
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -132,7 +131,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
               setTestament(book.testament as 'OT' | 'NT');
               setSelectedBook(book);
               
-              fetch(`/api/bible/books/${book.id}/chapters`)
+              fetch(`/api/get_chapter_count.php?bookId=${book.id}`)
                 .then(r => r.json())
                 .then(chapterData => {
                   if (chapterData.success) {
@@ -187,7 +186,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
   }, []);
 
   useEffect(() => {
-    fetch('/api/bible/books')
+    fetch('/api/get_books.php')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -200,7 +199,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
     setSelectedBook(book);
     setLoading(true);
     try {
-      const res = await fetch(`/api/bible/books/${book.id}/chapters`);
+      const res = await fetch(`/api/get_chapter_count.php?bookId=${book.id}`);
       const data = await res.json();
       if (data.success) {
         setChapterCount(data.data);
@@ -216,8 +215,8 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
     setCurrentSummary(null);
     try {
       const [res, summaryRes] = await Promise.all([
-        fetch(`/api/bible/verses/${bookId}/${chapter}`),
-        fetch(`/api/bible/summary/${bookId}/${chapter}`)
+        fetch(`/api/get_chapter_verses.php?bookId=${bookId}&chapter=${chapter}&version=${targetVersion}`),
+        fetch(`/api/get_chapter_summary.php?bookId=${bookId}&chapter=${chapter}`)
       ]);
       if (!res.ok) {
         throw new Error(`Verses API returned status: ${res.status}`);
@@ -237,32 +236,13 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
       }
 
       if (data.success) {
-        if (targetVersion !== 'KJV') {
-          try {
-            const tRes = await fetch('/api/translate-verses', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ verses: data.data, version: targetVersion })
-            });
-            if (!tRes.ok) {
-              throw new Error(`Translation API returned status: ${tRes.status}`);
-            }
-            const tData = await tRes.json();
-            if (tData.success && Array.isArray(tData.data) && tData.data.length > 0) {
-              setVerses(tData.data);
-            } else {
-              setVerses(data.data);
-            }
-          } catch (tErr) {
-            console.error('Translation fetch failed:', tErr);
-            setVerses(data.data);
-          }
-        } else {
-          setVerses(data.data);
-        }
+        setVerses(data.data);
+      } else {
+        setVerses([]);
       }
     } catch (e) {
       console.error(e);
+      setVerses([]);
     } finally {
       setLoading(false);
     }
@@ -289,7 +269,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
         setSelectedBook(nextBook);
         setTestament(nextBook.testament);
         try {
-          const res = await fetch(`/api/bible/books/${nextBook.id}/chapters`);
+          const res = await fetch(`/api/get_chapter_count.php?bookId=${nextBook.id}`);
           const data = await res.json();
           if (data.success) {
             setChapterCount(data.data);
@@ -314,7 +294,7 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
         setSelectedBook(prevBook);
         setTestament(prevBook.testament);
         try {
-          const res = await fetch(`/api/bible/books/${prevBook.id}/chapters`);
+          const res = await fetch(`/api/get_chapter_count.php?bookId=${prevBook.id}`);
           const data = await res.json();
           if (data.success) {
             setChapterCount(data.data);
@@ -868,9 +848,6 @@ export default function BibleReader({ globalVersion = 'IMF', onGoHome, initialBo
 
                     return (
                       <div className="mt-12">
-                        <div className="mb-8">
-                          <AdBanner dataAdSlot="bible_reader_bottom" />
-                        </div>
                         <div className="pt-8 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
                           onClick={handlePrevChapter}

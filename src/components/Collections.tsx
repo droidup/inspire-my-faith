@@ -36,7 +36,7 @@ interface CollectionsProps {
   collectionSettings: Record<string, CollectionSettings>;
   updateCollectionSetting: (collectionName: string, settings: Partial<CollectionSettings>) => void;
   deleteCollection: (collectionName: string) => void;
-  renameCollection?: (oldName: string, newName: string) => Promise<boolean>;
+  renameCollection?: (oldName: string, newName: string) => Promise<{success: boolean, reason?: string}>;
   sectionType: string;
   events: TimelineEvent[];
 }
@@ -163,11 +163,12 @@ export default function Collections({ onNavigate, onEditEvent, onDeleteEvent, co
       let targetName = activeCollection;
 
       if (newName !== activeCollection && renameCollection) {
-        const success = await renameCollection(activeCollection, newName);
-        if (success) {
+        const result = await renameCollection(activeCollection, newName);
+        if (result.success) {
           targetName = newName;
           setActiveCollection(newName);
         } else {
+          alert(`Rename failed: ${result.reason}`);
           return;
         }
       }
@@ -184,7 +185,7 @@ export default function Collections({ onNavigate, onEditEvent, onDeleteEvent, co
     setActiveCollection(colName);
     setItemsLoading(true);
     try {
-      const res = await fetch(`/api/user/${sectionType}/collections/${encodeURIComponent(colName)}/${user?.uid}`);
+      const res = await fetch(`/api/collection_items.php?sectionType=${sectionType}&collectionName=${encodeURIComponent(colName)}&userId=${user?.uid}`);
       const data = await res.json();
       if (data.success) {
         setCollectionItems(data.data);
@@ -301,7 +302,7 @@ export default function Collections({ onNavigate, onEditEvent, onDeleteEvent, co
     setShowSummaryModal(true);
     setSummaryLoading(true);
     try {
-      const res = await fetch('/api/timeline/summary', {
+      const res = await fetch('/api/timeline_summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: eventsToSummarize.slice(0, 50) })

@@ -22,7 +22,7 @@ export function useCollectionSettings(sectionType: string) {
     let isMounted = true;
     const fetchSettings = async () => {
       try {
-        const res = await fetch(`/api/user/collections/settings/${sectionType}/${user.uid}`);
+        const res = await fetch(`/api/collection_settings.php?sectionType=${sectionType}&userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setCollectionSettings(data.data);
@@ -33,18 +33,33 @@ export function useCollectionSettings(sectionType: string) {
     };
     
     fetchSettings();
-    return () => { isMounted = false; };
+
+    const handleSync = (e: any) => {
+      if (e.detail.sectionType === sectionType) {
+        setCollectionSettings(e.detail.settings);
+      }
+    };
+    window.addEventListener('collectionSettingsSync', handleSync);
+
+    return () => { 
+      isMounted = false; 
+      window.removeEventListener('collectionSettingsSync', handleSync);
+    };
   }, [user, sectionType]);
 
   const updateCollectionSetting = async (collectionName: string, settings: Partial<CollectionSettings>) => {
     // Optimistic update
     const current = collectionSettings[collectionName] || { color: '#c2094c', icon: 'FolderOpen', description: '', isPinned: false, createdAt: new Date().toISOString() };
     const nextSettings = { ...current, ...settings };
-    setCollectionSettings(prev => ({ ...prev, [collectionName]: nextSettings }));
+    setCollectionSettings(prev => {
+      const next = { ...prev, [collectionName]: nextSettings };
+      window.dispatchEvent(new CustomEvent('collectionSettingsSync', { detail: { sectionType, settings: next } }));
+      return next;
+    });
 
     if (!user) return;
     try {
-      await fetch('/api/user/collections/settings', {
+      await fetch('/api/collection_settings.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, sectionType, collectionName, settings: nextSettings })
@@ -59,10 +74,12 @@ export function useCollectionSettings(sectionType: string) {
     updateCollectionSetting(collectionName, { isPinned: !current.isPinned });
   };
 
-  const renameCollection = async (oldName: string, newName: string) => {
-    if (!user || oldName === newName || !newName.trim()) return false;
+  const renameCollection = async (oldName: string, newName: string): Promise<{success: boolean, reason?: string}> => {
+    if (!user) return { success: false, reason: "User not logged in" };
+    if (oldName === newName) return { success: false, reason: "Name did not change" };
+    if (!newName.trim()) return { success: false, reason: "New name is empty" };
     try {
-      const res = await fetch('/api/user/collections/rename', {
+      const res = await fetch('/api/rename_collection.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, sectionType, oldName, newName })
@@ -75,21 +92,22 @@ export function useCollectionSettings(sectionType: string) {
             next[newName] = next[oldName];
             delete next[oldName];
           }
+          window.dispatchEvent(new CustomEvent('collectionSettingsSync', { detail: { sectionType, settings: next } }));
           return next;
         });
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch (e) {
-      console.error("Failed to rename collection", e);
-      return false;
+      return { success: false, reason: data.message || "API returned false" };
+    } catch (e: any) {
+      console.error(e);
+      return { success: false, reason: e.message || "Network error" };
     }
   };
 
   const deleteCollection = async (collectionName: string) => {
     if (!user) return false;
     try {
-      const res = await fetch('/api/user/collections/delete', {
+      const res = await fetch('/api/delete_collection.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, sectionType, collectionName })
@@ -99,6 +117,7 @@ export function useCollectionSettings(sectionType: string) {
         setCollectionSettings(prev => {
           const next = { ...prev };
           delete next[collectionName];
+          window.dispatchEvent(new CustomEvent('collectionSettingsSync', { detail: { sectionType, settings: next } }));
           return next;
         });
         return true;

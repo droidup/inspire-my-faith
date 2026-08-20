@@ -25,7 +25,7 @@ export function useSermonNotes() {
     let isMounted = true;
     const fetchNotes = async () => {
       try {
-        const res = await fetch(`/api/user/sermon-notes/${user.uid}`);
+        const res = await fetch(`/api/get_sermon_notes.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setNotes(data.data);
@@ -39,23 +39,20 @@ export function useSermonNotes() {
     return () => { isMounted = false; };
   }, [user]);
 
-  const saveNote = async (note: SermonNote) => {
+  const saveNote = async (note: SermonNote, sourceSection: string = 'note') => {
     if (!user) return;
     try {
-      await fetch('/api/user/sermon-notes', {
+      await fetch('/api/save_sermon_note.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, note })
+        body: JSON.stringify({ userId: user.uid, note, sourceSection })
       });
-      setNotes(prev => {
-        const existing = prev.findIndex(n => n.id === note.id);
-        if (existing >= 0) {
-          const newNotes = [...prev];
-          newNotes[existing] = note;
-          return newNotes;
-        }
-        return [note, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-      });
+      
+      const res = await fetch(`/api/get_sermon_notes.php?userId=${user.uid}`);
+      const data = await res.json();
+      if (data.success) {
+        setNotes(data.data);
+      }
     } catch (e) {
       console.error("Failed to save note", e);
     }
@@ -64,12 +61,12 @@ export function useSermonNotes() {
   const removeNote = async (noteId: string) => {
     if (!user) return;
     try {
-      await fetch(`/api/user/sermon-notes/${noteId}?userId=${user.uid}`, {
+      await fetch(`/api/delete_sermon_note.php?noteId=${noteId}&userId=${user.uid}`, {
         method: 'DELETE'
       });
       setNotes(prev => prev.filter(n => n.id !== noteId));
     } catch (e) {
-      console.error("Failed to remove note", e);
+      console.error("Failed to remove sermon note", e);
     }
   };
 
@@ -88,20 +85,7 @@ export function useSermonNotes() {
       }
       
       const updatedNote = { ...note, collections: newCollections, timestamp: Date.now() };
-      await fetch('/api/user/sermon-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, note: updatedNote })
-      });
-      setNotes(prev => {
-        const existing = prev.findIndex(n => n.id === note.id);
-        if (existing >= 0) {
-          const newNotes = [...prev];
-          newNotes[existing] = updatedNote;
-          return newNotes.sort((a, b) => b.timestamp - a.timestamp);
-        }
-        return prev;
-      });
+      saveNote(updatedNote);
     } catch (e) {
       console.error("Failed to update note collection", e);
     }

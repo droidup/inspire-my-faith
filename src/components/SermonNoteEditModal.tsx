@@ -8,9 +8,10 @@ interface SermonNoteEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   note: SermonNote | null;
-  onUpdate: (note: SermonNote) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (note: SermonNote, sourceSection?: string) => void;
+  onDelete?: (id: string) => void;
   availableCollections?: string[];
+  sourceSection?: string;
 }
 
 export default function SermonNoteEditModal({
@@ -20,25 +21,30 @@ export default function SermonNoteEditModal({
   onUpdate,
   onDelete,
   availableCollections = [],
+  sourceSection,
 }: SermonNoteEditModalProps) {
   const [editingNote, setEditingNote] = useState<SermonNote | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
   useEffect(() => {
     if (note) {
-      setEditingNote({ ...note });
+      const filteredCollections = sourceSection 
+        ? (note.collections || []).filter(c => availableCollections.includes(c))
+        : note.collections || [];
+
+      setEditingNote({ ...note, collections: filteredCollections });
     }
-  }, [note]);
+  }, [note, sourceSection, availableCollections]);
 
   if (!isOpen || !editingNote) return null;
 
   const handleSaveAndClose = () => {
-    onUpdate(editingNote);
+    onUpdate(editingNote, sourceSection);
     onClose();
   };
 
   const handleUpdate = () => {
-    onUpdate(editingNote);
+    onUpdate(editingNote, sourceSection);
     onClose();
   };
 

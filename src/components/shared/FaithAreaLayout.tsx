@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Signpost, Heart, BookOpen, PenTool, Plus, X, ChevronLeft, ChevronRight, MessageSquareText, Pin as PinIcon, BookPlus, Search, Sparkles, LayoutGrid, List as ListIcon, CheckCircle2, Circle, FolderPlus, Copy, Check, Trash, HandHeart, HeartHandshake, ArrowDownUp, AlertTriangle, FolderOpen, Calendar, BookHeart } from 'lucide-react';
 import { useFaithTimeline, TimelineEvent } from '../../hooks/useFaithTimeline';
-import AdBanner from '../AdBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import Collections from '../Collections';
 import { useCollectionSettings } from '../../hooks/useCollectionSettings';
@@ -31,9 +30,10 @@ interface FaithAreaLayoutProps {
   hideViewToggle?: boolean;
   heroContent?: React.ReactNode;
   customToolbarActions?: React.ReactNode;
+  onCollectionRenamed?: (oldName: string, newName: string) => void;
 }
 
-export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, iconColor = '#c2094c', events, setEvents, loading, sectionType, onNavigate, onDeleteEvent, onEditEvent, primaryAction, onGenerateSummary, isEmbedded = false, forcedTab, hideTabs = false, hideViewToggle = false, heroContent, customToolbarActions }: FaithAreaLayoutProps) {
+export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, iconColor = '#c2094c', events, setEvents, loading, sectionType, onNavigate, onDeleteEvent, onEditEvent, primaryAction, onGenerateSummary, isEmbedded = false, forcedTab, hideTabs = false, hideViewToggle = false, heroContent, customToolbarActions, onCollectionRenamed }: FaithAreaLayoutProps) {
   const { user } = useAuth();
   
   const [activeTabState, setActiveTab] = useState<'timeline' | 'collections' | 'calendar'>('timeline');
@@ -59,6 +59,22 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
 
   
   const { collectionSettings, updateCollectionSetting, deleteCollection, renameCollection } = useCollectionSettings(sectionType);
+  const handleRenameCollection = async (oldName: string, newName: string) => {
+    if (!renameCollection) return { success: false, reason: 'Rename function not available' };
+    const result = await renameCollection(oldName, newName);
+    if (result.success) {
+      if (setEvents) {
+        setEvents(prev => prev.map(e => ({
+          ...e,
+          collections: e.collections?.map(c => c === oldName ? newName : c)
+        })));
+      }
+      if (onCollectionRenamed) {
+        onCollectionRenamed(oldName, newName);
+      }
+    }
+    return result;
+  };
   const uniqueCollections = React.useMemo(() => {
     const fromSettings = Object.keys(collectionSettings);
     const fromEvents = events.flatMap(e => e.collections || []);
@@ -192,7 +208,7 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
     setShowSummaryModal(true);
     setSummaryLoading(true);
     try {
-      const res = await fetch('/api/timeline/summary', {
+      const res = await fetch('/api/timeline_summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: eventsToSummarize.slice(0, 50) }) // Limit for API
@@ -218,7 +234,7 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
        return { id, type: event?.type || 'unknown' };
     });
     
-    await fetch('/api/user/timeline/collections', {
+    await fetch('/api/bulk_add_to_collection.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.uid, collectionName, items: itemsToAdd })
@@ -328,7 +344,7 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
       {/* --- Top Toggle Buttons --- */}
       {!hideTabs && (
         <div className="flex justify-center mb-8">
-          <div className="bg-stone-100 p-1 rounded-2xl flex flex-wrap justify-center gap-1 shadow-inner">
+          <div className="flex bg-stone-100 p-1 rounded-2xl w-fit shrink-0 shadow-inner">
             <button
               onClick={() => setActiveTab('timeline')}
               className={`px-4 sm:px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] sm:text-xs transition-all duration-300 flex items-center gap-2 ${
@@ -373,12 +389,12 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
 
         {forcedTab === 'collections' || viewMode === 'collections' || activeTab === 'collections' ? (
               <Collections 
-                events={events} 
-                sectionType={sectionType} 
+                sectionType={sectionType}
+                events={events}
                 collectionSettings={collectionSettings} 
                 updateCollectionSetting={updateCollectionSetting} 
                 deleteCollection={deleteCollection}
-                renameCollection={renameCollection}
+                renameCollection={handleRenameCollection}
                 onNavigate={onNavigate}
                 onEditEvent={onEditEvent}
                 onDeleteEvent={onDeleteEvent}
@@ -1004,11 +1020,6 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
                     return (
                       <React.Fragment key={event.id}>
                         {EventCard}
-                        {idx > 0 && (idx + 1) % 10 === 0 && (
-                          <div className={viewMode === 'grid' ? "col-span-1 sm:col-span-2 lg:col-span-2 mt-4 mb-4" : "mt-4 mb-4"}>
-                            <AdBanner dataAdSlot="faith_timeline_in_feed" />
-                          </div>
-                        )}
                       </React.Fragment>
                     );
                   })}
@@ -1020,18 +1031,6 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
         </div>
         )}
       
-      {activeTab === 'timeline' && events.length > 0 && (
-          <div className="mt-8 pb-12">
-            <AdBanner dataAdSlot="faith_timeline_bottom" />
-          </div>
-        )}
-
-      {activeTab === 'collections' && (
-          <div className="mt-8 pb-12">
-            <AdBanner dataAdSlot="faith_timeline_bottom" />
-          </div>
-        )}
-
       {/* AI Summary Modal */}
       </>
       )}
@@ -1126,4 +1125,5 @@ export default function FaithAreaLayout({ title, subtitle, icon: IconComponent, 
     </div>
   );
 }
+
 

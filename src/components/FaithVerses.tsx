@@ -14,7 +14,7 @@ interface FaithVersesProps {
 }
 
 export default function FaithVerses({ onNavigate, onEditEvent, isEmbedded, forcedTab }: FaithVersesProps) {
-  const { faithVerses, loading, removeVerse, saveVerse } = useFaithVerses();
+  const { faithVerses, loading, removeVerse, saveVerse, renameCollectionInItems } = useFaithVerses();
   const { collectionSettings } = useCollectionSettings('faith_verses');
   const [dailyVerseData, setDailyVerseData] = useState<any>(null);
   const [editingVerseId, setEditingVerseId] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export default function FaithVerses({ onNavigate, onEditEvent, isEmbedded, force
     let isMounted = true;
     const fetchDailyVerse = async () => {
       try {
-        const response = await fetch('/api/verse-of-the-day');
+        const response = await fetch('/api/get_verse_of_the_day.php');
         const data = await response.json();
         if (data.success && isMounted) {
           setDailyVerseData(data.data);
@@ -128,6 +128,7 @@ export default function FaithVerses({ onNavigate, onEditEvent, isEmbedded, force
         onNavigate={onNavigate}
         onEditEvent={setEditingVerseId}
         onDeleteEvent={removeVerse}
+        onCollectionRenamed={renameCollectionInItems}
         isEmbedded={isEmbedded}
         forcedTab={forcedTab}
       />

@@ -23,7 +23,7 @@ export function useReadingPlans() {
     let isMounted = true;
     const fetchPlans = async () => {
       try {
-        const res = await fetch(`/api/user/reading-plans/${user.uid}`);
+        const res = await fetch(`/api/user_reading_plans.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setPlans(data.data);
@@ -40,7 +40,7 @@ export function useReadingPlans() {
   const savePlan = async (plan: ReadingPlan) => {
     if (!user) return;
     try {
-      await fetch('/api/user/reading-plans', {
+      await fetch('/api/user_reading_plans.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, plan })
@@ -90,7 +90,7 @@ export function useReadingPlans() {
     // If completed, log event
     if (updatedPlan.progress === updatedPlan.totalDays) {
       try {
-        await fetch('/api/user/faith-events', {
+        await fetch('/api/user_faith_events.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 

@@ -44,7 +44,7 @@ export function useFaithVerses() {
     let isMounted = true;
     const fetchVerses = async () => {
       try {
-        const res = await fetch(`/api/user/faith-verses/${user.uid}`);
+        const res = await fetch(`/api/get_faith_verses.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setFaithVerses(data.data);
@@ -60,11 +60,31 @@ export function useFaithVerses() {
     return () => { isMounted = false; };
   }, [user]);
 
+  const saveFaithVerse = async (verse: SavedVerse, sourceSection: string = 'faith_verses') => {
+    if (!user) return;
+    try {
+      await fetch('/api/save_faith_verse.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, verse, sourceSection })
+      });
+      
+      // Reload after sync
+      const res = await fetch(`/api/get_faith_verses.php?userId=${user.uid}`);
+      const data = await res.json();
+      if (data.success) {
+        setFaithVerses(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to save faith verse", e);
+    }
+  };
+
   const syncLocalToCloud = async (localVerses: SavedVerse[]) => {
      if (!user || localVerses.length === 0) return;
      for (const verse of localVerses) {
        try {
-         await fetch('/api/user/faith-verses', {
+         await fetch('/api/save_faith_verse.php', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ userId: user.uid, verse })
@@ -76,7 +96,7 @@ export function useFaithVerses() {
      localStorage.removeItem('imf_faith_verses'); // Clear local once synced
      
      // Reload after sync
-     const res = await fetch(`/api/user/faith-verses/${user.uid}`);
+     const res = await fetch(`/api/get_faith_verses.php?userId=${user.uid}`);
      const data = await res.json();
      if (data.success) {
        setFaithVerses(data.data);
@@ -134,7 +154,7 @@ export function useFaithVerses() {
         });
       });
       try {
-        await fetch('/api/user/faith-verses', {
+        await fetch('/api/save_faith_verse.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.uid, verse: newVerse })
@@ -167,7 +187,7 @@ export function useFaithVerses() {
       // Optimistic update
       setFaithVerses(prev => prev.map(v => v.id === id ? { ...v, note } : v));
       try {
-        await fetch(`/api/user/faith-verses/${id}/note`, {
+        await fetch(`/api/update_verse_note.php?verseId=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.uid, note })
@@ -189,7 +209,7 @@ export function useFaithVerses() {
        // Optimistic update
       setFaithVerses(prev => prev.filter(v => v.id !== id));
       try {
-        await fetch(`/api/user/faith-verses/${id}?userId=${user.uid}`, {
+        await fetch(`/api/delete_faith_verse.php?verseId=${id}&userId=${user.uid}`, {
           method: 'DELETE'
         });
       } catch (error) {

@@ -9,9 +9,10 @@ interface FaithVerseEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   verse: SavedVerse | null;
-  onUpdate: (verse: SavedVerse) => void;
+  onUpdate: (verse: SavedVerse, sourceSection?: string) => void;
   onDelete: (id: string) => void;
   availableCollections?: string[];
+  sourceSection?: string;
 }
 
 export default function FaithVerseEditModal({
@@ -21,6 +22,7 @@ export default function FaithVerseEditModal({
   onUpdate,
   onDelete,
   availableCollections = [],
+  sourceSection,
 }: FaithVerseEditModalProps) {
   const [editingVerse, setEditingVerse] = useState<SavedVerse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -28,20 +30,28 @@ export default function FaithVerseEditModal({
   const reference = verse ? `${verse.bookName} ${verse.chapter}:${verse.verseNum}` : '';
   
   useEffect(() => {
-    if (verse) {
-      setEditingVerse({ ...verse });
+    if (isOpen && verse) {
+      const initialCollections = typeof verse.collections === 'string' 
+        ? verse.collections.split('|||') 
+        : (verse.collections || []);
+
+      const filteredCollections = sourceSection 
+        ? initialCollections.filter(c => availableCollections.includes(c))
+        : initialCollections;
+
+      setEditingVerse({ ...verse, collections: filteredCollections });
     }
-  }, [verse]);
+  }, [verse, sourceSection, availableCollections]);
 
   if (!isOpen || !editingVerse) return null;
 
   const handleSaveAndClose = () => {
-    onUpdate(editingVerse);
+    onUpdate(editingVerse, sourceSection);
     onClose();
   };
 
   const handleUpdate = () => {
-    onUpdate(editingVerse);
+    onUpdate(editingVerse, sourceSection);
     onClose();
   };
 
@@ -69,8 +79,12 @@ export default function FaithVerseEditModal({
               <HeartHandshake className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-stone-900">Faith Verse</h3>
-              <p className="text-xs text-stone-500 font-medium">Save to the Faith Verse area</p>
+              <h3 className="text-lg font-semibold text-stone-900">
+                {sourceSection === 'faith_guide' ? 'Faith Guide Verse' : 'Faith Verse'}
+              </h3>
+              <p className="text-xs text-stone-500 font-medium mt-0.5">
+                Save to the {sourceSection === 'faith_guide' ? 'Faith Guide' : 'Faith Verse'} area
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

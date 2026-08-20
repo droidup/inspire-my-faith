@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, Compass } from 'lucide-react';
 import { Prompt } from '../hooks/useSavedPrompts';
+import { Prompt as SavedPrompt } from '../hooks/useSavedPrompts';
 import FolderDropdown from './shared/FolderDropdown';
 import RichTextEditor from './RichTextEditor';
 
 interface PromptEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  prompt: Prompt | null;
-  onUpdate: (prompt: Prompt) => void;
-  onDelete: (id: string) => void;
+  prompt: SavedPrompt | null;
+  onUpdate: (prompt: SavedPrompt, sourceSection?: string) => void;
+  onDelete?: (id: string) => void;
   availableCollections?: string[];
+  sourceSection?: string;
 }
 
 export default function PromptEditModal({
@@ -20,25 +22,30 @@ export default function PromptEditModal({
   onUpdate,
   onDelete,
   availableCollections = [],
+  sourceSection,
 }: PromptEditModalProps) {
-  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState<SavedPrompt | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<'prompt' | 'thoughts'>('prompt');
 
   useEffect(() => {
     if (prompt) {
-      setEditingPrompt({ ...prompt });
+      const filteredCollections = sourceSection 
+        ? (prompt.collections || []).filter(c => availableCollections.includes(c))
+        : prompt.collections || [];
+
+      setEditingPrompt({ ...prompt, collections: filteredCollections });
     }
-  }, [prompt]);
+  }, [prompt, sourceSection, availableCollections]);
 
   if (!isOpen || !editingPrompt) return null;
 
   const handleSaveAndClose = () => {
-    onUpdate(editingPrompt);
+    onUpdate(editingPrompt, sourceSection);
     onClose();
   };
 
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this prompt?')) {
+    if (onDelete && confirm('Are you sure you want to delete this prompt?')) {
       onDelete(editingPrompt.id);
       onClose();
     }

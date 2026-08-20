@@ -14,7 +14,6 @@ import ReadingPlans from './components/ReadingPlans';
 import SermonNotes from './components/SermonNotes';
 import FaithTimeline from './components/FaithTimeline';
 import Collections from './components/Collections';
-import AdBanner from './components/AdBanner';
 import BookmarksModal from './components/BookmarksModal';
 import AuthModal from './components/AuthModal';
 import VerseOfTheDayCard from './components/VerseOfTheDayCard';
@@ -44,7 +43,7 @@ export default function App() {
 
   useEffect(() => {
     if (user?.email) {
-      fetch(`/api/admin/check?email=${encodeURIComponent(user.email)}`)
+      fetch(`/api/admin_check.php?email=${encodeURIComponent(user.email)}`)
         .then(res => res.json())
         .then(data => {
            setIsAdmin(data.isAdmin || false);
@@ -56,6 +55,31 @@ export default function App() {
       setIsSuperAdmin(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    fetch('/api/admin_settings.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.ads_enabled === 'true') {
+          // Check if script already exists to avoid duplicates
+          if (!document.getElementById('adsense-script')) {
+            const script = document.createElement('script');
+            script.id = 'adsense-script';
+            script.async = true;
+            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9859645464302389';
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+          }
+        } else {
+          // Remove script if disabled
+          const existingScript = document.getElementById('adsense-script');
+          if (existingScript) {
+            existingScript.remove();
+          }
+        }
+      })
+      .catch(err => console.error('Error fetching settings:', err));
+  }, []);
 
   const versionDropdownRef = useRef<HTMLDivElement>(null);
   const bibleDropdownRef = useRef<HTMLDivElement>(null);
@@ -267,7 +291,7 @@ export default function App() {
           >
             Bookmarks
           </span>
-          {isAdmin && (
+          {isSuperAdmin && (
             <span 
               className={`cursor-pointer transition-all duration-300 hover:text-[#c2094c] text-blue-600 ${activeView === 'admin' ? 'font-black' : ''}`}
               onClick={() => handleNavClick('admin')}
@@ -452,7 +476,7 @@ export default function App() {
 
           <hr className="border-stone-100 my-2" />
           
-          {isAdmin && (
+          {isSuperAdmin && (
           <div className="flex gap-4">
             <button 
               className={`cursor-pointer flex items-center gap-2 font-medium text-sm ${activeView === 'admin' ? 'text-[#c2094c]' : 'text-stone-500'}`}
@@ -508,11 +532,11 @@ export default function App() {
           {activeView === 'faith_timeline' && <FaithTimeline onNavigate={handleNavClick} />}
         </main>
       )}
-      {activeView === 'admin' && (
-        <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-[#faf9f8]">
-          {isAdmin ? <AdminDashboard userEmail={user?.email || ''} isSuperAdmin={isSuperAdmin} /> : <div className="p-8 text-center text-stone-500">Access Denied</div>}
-        </main>
-      )}
+        {activeView === 'admin' && (
+          <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-[#faf9f8]">
+          {isSuperAdmin ? <AdminDashboard userEmail={user?.email || ''} isSuperAdmin={isSuperAdmin} /> : <div className="p-8 text-center text-stone-500">Access Denied</div>}
+          </main>
+        )}
 
       {activeView === 'home' && (
         <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -554,11 +578,6 @@ export default function App() {
                   <VerseOfTheDayCard />
                 </div>
               </div>
-            </div>
-
-            {/* Ad placement - Middle */}
-            <div className="max-w-4xl mx-auto px-4 mb-24">
-              <AdBanner dataAdSlot="home_page_middle" />
             </div>
 
             {/* Grid Section */}
@@ -627,15 +646,10 @@ export default function App() {
                 </div>
               </div>
             </div>
-
-            {/* Ad placement */}
-            <div className="max-w-4xl mx-auto px-4 mt-12">
-              <AdBanner dataAdSlot="home_page_bottom" />
-            </div>
-
           </div>
         </main>
       )}
     </div>
   );
 }
+

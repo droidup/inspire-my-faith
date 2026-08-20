@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (localPrayers) {
         const prayers = JSON.parse(localPrayers);
         for (const prayer of prayers) {
-          await fetch('/api/user/prayers', {
+          await fetch('/api/user_prayers.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, prayer })

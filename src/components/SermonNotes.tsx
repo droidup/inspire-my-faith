@@ -257,7 +257,7 @@ export default function SermonNotes({ targetNoteId, clearTargetNote, onReturn }:
         : filteredNotes;
       const finalItems = itemsToSummarize.length > 0 ? itemsToSummarize : filteredNotes;
 
-      const res = await fetch('/api/timeline/summary', {
+      const res = await fetch('/api/timeline_summary.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: finalItems })

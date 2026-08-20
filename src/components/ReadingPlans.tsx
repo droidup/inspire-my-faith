@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, Flame, CalendarDays, CheckCircle2, ChevronRight, Plus } from 'lucide-react';
 import { useReadingPlans, ReadingPlan } from '../hooks/useReadingPlans';
-import AdBanner from './AdBanner';
 
 const AVAILABLE_PLANS = [
   { id: 'gospels-30', name: 'The Gospels in 30 Days', days: 30 },
@@ -77,9 +76,6 @@ export default function ReadingPlans() {
                   </button>
                 </div>
               ))}
-              <div className="sm:col-span-2 mt-2">
-                <AdBanner dataAdSlot="reading_plans_catalog" />
-              </div>
             </div>
           </div>
         ) : (
@@ -135,10 +131,6 @@ export default function ReadingPlans() {
                 );
               })
             )}
-            
-            <div className="mt-8">
-              <AdBanner dataAdSlot="reading_plans_active" />
-            </div>
           </div>
         )}
       </div>

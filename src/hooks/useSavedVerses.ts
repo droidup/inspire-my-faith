@@ -44,7 +44,7 @@ export function useSavedVerses() {
     let isMounted = true;
     const fetchVerses = async () => {
       try {
-        const res = await fetch(`/api/user/verses/${user.uid}`);
+        const res = await fetch(`/api/get_saved_verses.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setSavedVerses(data.data);
@@ -60,11 +60,30 @@ export function useSavedVerses() {
     return () => { isMounted = false; };
   }, [user]);
 
+  const saveSavedVerse = async (verse: SavedVerse, sourceSection: string = 'saved_verses') => {
+    if (!user) return;
+    try {
+      await fetch('/api/save_saved_verse.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, verse, sourceSection })
+      });
+      
+      const res = await fetch(`/api/get_saved_verses.php?userId=${user.uid}`);
+      const data = await res.json();
+      if (data.success) {
+        setSavedVerses(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to save bookmark", e);
+    }
+  };
+
   const syncLocalToCloud = async (localVerses: SavedVerse[]) => {
      if (!user || localVerses.length === 0) return;
      for (const verse of localVerses) {
        try {
-         await fetch('/api/user/verses', {
+         await fetch('/api/save_saved_verse.php', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ userId: user.uid, verse })
@@ -76,7 +95,7 @@ export function useSavedVerses() {
      localStorage.removeItem('imf_saved_verses'); // Clear local once synced
      
      // Reload after sync
-     const res = await fetch(`/api/user/verses/${user.uid}`);
+     const res = await fetch(`/api/get_saved_verses.php?userId=${user.uid}`);
      const data = await res.json();
      if (data.success) {
        setSavedVerses(data.data);
@@ -134,7 +153,7 @@ export function useSavedVerses() {
         });
       });
       try {
-        await fetch('/api/user/verses', {
+        await fetch('/api/save_saved_verse.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.uid, verse: newVerse })
@@ -167,7 +186,7 @@ export function useSavedVerses() {
       // Optimistic update
       setSavedVerses(prev => prev.map(v => v.id === id ? { ...v, note } : v));
       try {
-        await fetch(`/api/user/verses/${id}/note`, {
+        await fetch(`/api/update_saved_verse_note.php?verseId=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.uid, note })
@@ -189,7 +208,7 @@ export function useSavedVerses() {
        // Optimistic update
       setSavedVerses(prev => prev.filter(v => v.id !== id));
       try {
-        await fetch(`/api/user/verses/${id}?userId=${user.uid}`, {
+        await fetch(`/api/delete_saved_verse.php?verseId=${id}&userId=${user.uid}`, {
           method: 'DELETE'
         });
       } catch (error) {

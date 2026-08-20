@@ -21,7 +21,7 @@ export default function VerseOfTheDayCard({
     let isMounted = true;
     const fetchVerse = async () => {
       try {
-        const response = await fetch('/api/verse-of-the-day');
+        const response = await fetch('/api/get_verse_of_the_day.php');
         const data = await response.json();
         if (data.success && isMounted) {
           setVerse(data.data);

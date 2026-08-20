@@ -13,7 +13,7 @@ interface PrayerJournalViewProps {
 }
 
 export default function PrayerJournalView({ onNavigate, onEditEvent, isEmbedded, forcedTab, hideTabs, hideViewToggle }: PrayerJournalViewProps) {
-  const { events, loading, setEvents, removePrayer } = usePrayerJournal();
+  const { events, loading, setEvents, removePrayer, renameCollectionInItems } = usePrayerJournal();
   
   const handleDelete = async (id: string) => {
     await removePrayer(id);
@@ -32,6 +32,7 @@ export default function PrayerJournalView({ onNavigate, onEditEvent, isEmbedded,
       onNavigate={onNavigate}
       onDeleteEvent={handleDelete}
       onEditEvent={onEditEvent}
+      onCollectionRenamed={renameCollectionInItems}
       isEmbedded={isEmbedded}
       forcedTab={forcedTab}
       hideTabs={hideTabs}

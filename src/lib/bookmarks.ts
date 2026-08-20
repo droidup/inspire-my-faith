@@ -13,7 +13,7 @@ const LOCAL_KEY = 'inspire_my_faith_bookmarks';
 export const getBookmarks = async (userId: string | null): Promise<Bookmark[]> => {
   if (userId) {
     try {
-      const response = await fetch(`/api/user/bookmarks/${userId}`);
+      const response = await fetch(`/api/bookmarks.php?userId=${userId}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const result = await response.json();
       
@@ -59,7 +59,7 @@ export const addBookmark = async (userId: string | null, bookmark: Bookmark) => 
 
   if (userId) {
     try {
-      const response = await fetch('/api/user/bookmarks', {
+      const response = await fetch('/api/bookmarks.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, bookmark })
@@ -78,7 +78,7 @@ export const removeBookmark = async (userId: string | null, id: string) => {
 
   if (userId) {
     try {
-      const response = await fetch(`/api/user/bookmarks/${id}?userId=${userId}`, {
+      const response = await fetch(`/api/bookmarks.php?verseId=${id}&userId=${userId}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Network response was not ok');
@@ -87,3 +87,4 @@ export const removeBookmark = async (userId: string | null, id: string) => {
     }
   }
 };
+

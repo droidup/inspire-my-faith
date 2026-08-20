@@ -39,7 +39,7 @@ export function useSavedPrompts() {
     let isMounted = true;
     const fetchPrompts = async () => {
       try {
-        const res = await fetch(`/api/user/saved-prompts/${user.uid}`);
+        const res = await fetch(`/api/get_saved_prompts.php?userId=${user.uid}`);
         const data = await res.json();
         if (data.success && isMounted) {
           setPrompts(data.data);
@@ -53,7 +53,7 @@ export function useSavedPrompts() {
     return () => { isMounted = false; };
   }, [user, loading]);
 
-  const savePrompt = async (prompt: Prompt) => {
+  const savePrompt = async (prompt: Prompt, sourceSection: string = 'prompt_builder') => {
     if (!user) {
       // Save to local storage
       setPrompts(prev => {
@@ -72,20 +72,17 @@ export function useSavedPrompts() {
     }
 
     try {
-      await fetch('/api/user/saved-prompts', {
+      await fetch('/api/save_saved_prompt.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, prompt })
+        body: JSON.stringify({ userId: user.uid, prompt, sourceSection })
       });
-      setPrompts(prev => {
-        const existing = prev.findIndex(p => p.id === prompt.id);
-        if (existing >= 0) {
-          const newPrompts = [...prev];
-          newPrompts[existing] = prompt;
-          return newPrompts;
-        }
-        return [prompt, ...prev].sort((a, b) => b.timestamp - a.timestamp);
-      });
+      
+      const res = await fetch(`/api/get_saved_prompts.php?userId=${user.uid}`);
+      const data = await res.json();
+      if (data.success) {
+        setPrompts(data.data);
+      }
     } catch (e) {
       console.error("Failed to save prompt", e);
     }
@@ -103,7 +100,7 @@ export function useSavedPrompts() {
     }
 
     try {
-      await fetch(`/api/user/saved-prompts/${promptId}?userId=${user.uid}`, {
+      await fetch(`/api/delete_saved_prompt.php?promptId=${promptId}&userId=${user.uid}`, {
         method: 'DELETE'
       });
       setPrompts(prev => prev.filter(p => p.id !== promptId));
@@ -113,32 +110,8 @@ export function useSavedPrompts() {
   };
 
   const toggleAnswered = async (prompt: Prompt) => {
-    const updated = { ...prompt, answered: !prompt.answered };
+    const updated = { ...prompt, isPinned: !prompt.isPinned };
     await savePrompt(updated);
-    
-    if (!user) return; // Don't log faith event if not logged in
-
-    // If it was marked as answered, log it to the Faith Timeline
-    if (updated.answered) {
-      try {
-        await fetch('/api/user/faith-events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            userId: user.uid, 
-            event: {
-              id: `event-prompt-${prompt.id}`,
-              eventType: 'prompt_answered',
-              title: 'Answered Prompt',
-              description: prompt.title,
-              timestamp: Date.now()
-            }
-          })
-        });
-      } catch (e) {
-        console.error("Failed to log faith event", e);
-      }
-    }
   };
 
   const togglePromptPin = (prompt: Prompt) => {

@@ -10,6 +10,7 @@ export interface TimelineEvent {
   timestamp: number;
   note?: string;
   version?: string;
+  source?: 'faith' | 'saved';
 }
 
 export function useFaithTimeline() {
@@ -31,8 +32,8 @@ export function useFaithTimeline() {
       try {
         // Fetch both timeline events and saved verses
         const [timelineRes, versesRes] = await Promise.all([
-          fetch(`/api/user/timeline/${user.uid}`),
-          fetch(`/api/user/verses/${user.uid}`)
+          fetch(`/api/get_timeline.php?userId=${user.uid}`),
+          fetch(`/api/get_saved_verses.php?userId=${user.uid}`)
         ]);
         
         const timelineData = await timelineRes.json();
@@ -50,10 +51,15 @@ export function useFaithTimeline() {
           timestamp: verse.savedAt,
           note: verse.note || '',
           version: verse.version || 'BIBLE',
+          source: 'saved',
         }));
         
         // Merge timeline events with verse events
-        const allEvents = [...(timelineData.success ? timelineData.data : []), ...verseEvents];
+        const mappedTimelineData = (timelineData.success ? timelineData.data : []).map(event => ({
+          ...event,
+          source: event.type === 'verse' ? 'faith' : undefined
+        }));
+        const allEvents = [...mappedTimelineData, ...verseEvents];
         
         // Remove duplicates (same id) and sort by timestamp
         const uniqueMap = new Map<string, TimelineEvent>();
