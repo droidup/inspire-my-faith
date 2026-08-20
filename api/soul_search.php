@@ -114,7 +114,7 @@ Return ONLY valid JSON matching this schema:
                     $verseRow = $selVerse->fetch(PDO::FETCH_ASSOC);
                     
                     if ($verseRow) {
-                        $insMap = $pdo->prepare("INSERT IGNORE INTO topic_verse_map (topic_id, verse_id) VALUES (?, ?)");
+                        $insMap = $pdo->prepare("INSERT IGNORE INTO verse_topics (topic_id, verse_id) VALUES (?, ?)");
                         $insMap->execute([$newTopicId, $verseRow['id']]);
                     }
                 }
@@ -134,7 +134,7 @@ Return ONLY valid JSON matching this schema:
         
         $sql = "
           SELECT v.id, b.name as book_name, v.chapter, v.verse, v.text 
-          FROM topic_verse_map tvm
+          FROM verse_topics tvm
           JOIN verses v ON tvm.verse_id = v.id
           JOIN books b ON v.book_id = b.id
           WHERE tvm.topic_id IN ($inQuery)
